@@ -66,3 +66,30 @@ def test_emergency_override_response_structure():
     assert override["is_emergency"] is True
     assert "Gaggawa" in override["tier_label_ha"]
     assert len(override["primary_actions_ha"]) > 0
+
+def test_tts_service_hash_generation():
+    from app.services.tts_service import tts_service
+    res = tts_service.generate_voice_response("Sannu da zuwa cibiyar lafiya.", language="ha")
+    assert res["status"] == "ready"
+    assert "text_hash=" in res["audio_url"]
+    assert len(res["audio_url"].split("text_hash=")[1].split("&")[0]) == 8
+
+def test_gemini_service_tier_case_normalization():
+    from app.services.gemini_service import gemini_service
+    sample_data = {
+        "tier": " red ",
+        "tier_label_ha": "Gaggawa",
+        "tier_label_en": "Emergency",
+        "is_emergency": True,
+        "summary_ha": "Gaggawa ce.",
+        "summary_en": "It is an emergency.",
+        "primary_actions_ha": ["Tafi asibiti"],
+        "primary_actions_en": ["Go to hospital"],
+        "clinical_disclaimer_ha": "Shawarar Lafiya taimako ne.",
+        "clinical_disclaimer_en": "Triage support only.",
+        "nearest_care_guidance_ha": "Tafi PHC.",
+        "nearest_care_guidance_en": "Go to PHC."
+    }
+    gemini_service._validate_triage_json(sample_data)
+    assert sample_data["tier"] == "RED"
+

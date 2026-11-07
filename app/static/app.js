@@ -39,6 +39,9 @@ const I18N = {
     btnCall:        "Kira Sufurin Gaggawa (112)",
     firstAid:       "Kwantar da mara lafiyar a gefe (recovery position). Kada ka tura wani abu a bakinsa.",
     disclaimer:     "Jagorar kiwon lafiya ta farko ce kawai; ba madadin ganin likita ba ne.",
+    lblNewAssessment: "+ Sabon Triage",
+    lblNavModules:  "MODULIN AI",
+    lblSidebarLibrary: "GIRKIN MISALAI",
     btnFindPhcShortcut: "Nemi PHC Mafi Kusa",
     btnScanMrdtShortcut: "Gwajin mRDT ta Hoto",
     mrdtTitle:      "Fassarar Gwajin mRDT ta AI",
@@ -97,6 +100,9 @@ const I18N = {
     btnCall:        "Call Emergency / PHC (112)",
     firstAid:       "Lay patient on side (recovery position). Keep airway clear — do NOT insert anything into mouth.",
     disclaimer:     "Primary health triage guidance only; not a substitute for clinical examination.",
+    lblNewAssessment: "+ New Assessment",
+    lblNavModules:  "AI MODULES",
+    lblSidebarLibrary: "SCENARIO LIBRARY",
     btnFindPhcShortcut: "Find Nearest PHC",
     btnScanMrdtShortcut: "Read mRDT Strip via Photo",
     mrdtTitle:      "AI mRDT Strip Interpretation",
@@ -306,11 +312,69 @@ function applyI18n() {
   $('faq-text').innerText           = t.faqA;
   $('btn-faq-audio').innerText      = t.btnFaqAudio;
 
+  // Sidebar labels
+  if ($('lbl-new-assessment')) $('lbl-new-assessment').innerText = t.lblNewAssessment;
+  if ($('lbl-nav-modules')) $('lbl-nav-modules').innerText = t.lblNavModules;
+  if ($('lbl-sidebar-library')) $('lbl-sidebar-library').innerText = t.lblSidebarLibrary;
+  if ($('btn-scenarios-label-inner')) $('btn-scenarios-label-inner').innerText = t.btnScenarios;
+
   // Scenario trigger button label
   if ($('btn-scenarios-label')) $('btn-scenarios-label').innerText = t.btnScenarios;
+
+  // Update workspace topbar title
+  updateTopbarTitle();
+
   // Re-render dialog list labels if dialog is open
   const overlay = $('scenario-dialog-overlay');
   if (overlay && !overlay.classList.contains('hidden')) renderScenarioList();
+}
+
+const TOPBAR_TITLES = {
+  ha: {
+    triage: "Tantance Alamomi",
+    mrdt: "Fassarar Gwajin mRDT",
+    referral: "Nemi Cibiyar PHC",
+    imm: "Allurar Rigakafi"
+  },
+  en: {
+    triage: "Symptom Triage",
+    mrdt: "mRDT Strip Reader",
+    referral: "Find Nearest PHC",
+    imm: "Immunization Schedule"
+  }
+};
+
+function updateTopbarTitle() {
+  const el = document.getElementById('topbar-view-title');
+  if (el) {
+    const titles = TOPBAR_TITLES[STATE.language] || TOPBAR_TITLES.ha;
+    el.innerText = titles[STATE.tab] || titles.triage;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard Sidebar Navigation Controls
+// ---------------------------------------------------------------------------
+function toggleSidebar() {
+  const sb = document.getElementById('dashboard-sidebar');
+  const bd = document.getElementById('sidebar-backdrop');
+  if (sb) sb.classList.toggle('open');
+  if (bd) bd.classList.toggle('active');
+}
+
+function closeSidebar() {
+  const sb = document.getElementById('dashboard-sidebar');
+  const bd = document.getElementById('sidebar-backdrop');
+  if (sb) sb.classList.remove('open');
+  if (bd) bd.classList.remove('active');
+}
+
+function startNewTriage() {
+  switchTab('triage');
+  clearInput();
+  closeSidebar();
+  const textarea = document.getElementById('symptom-text');
+  if (textarea) textarea.focus();
 }
 
 // ---------------------------------------------------------------------------
@@ -324,6 +388,8 @@ function switchTab(tab) {
     if (tabBtn) tabBtn.classList.toggle('active', t === tab);
     if (viewSec) viewSec.classList.toggle('active', t === tab);
   });
+  updateTopbarTitle();
+  closeSidebar();
   if (tab === 'imm') loadVaccines(0);
   if (tab === 'referral') {
     const select = document.getElementById('referral-state-select');

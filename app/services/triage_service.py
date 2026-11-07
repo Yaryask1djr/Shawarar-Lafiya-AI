@@ -107,24 +107,33 @@ class TriageService:
         # -------------------------------------------------------------
         # STEP 3: POST-EXECUTION PRESCRIPTION GUARDRAIL
         # -------------------------------------------------------------
-        raw_summary = triage_dict.get("summary_ha", "") + " " + triage_dict.get("summary_en", "")
-        for act in triage_dict.get("primary_actions_ha", []) + triage_dict.get("primary_actions_en", []):
-            raw_summary += " " + act
+        clean_sum_ha, blocked_ha = guardrail_service.sanitize_and_check_prescriptions(
+            triage_dict.get("summary_ha", "")
+        )
+        clean_sum_en, blocked_en = guardrail_service.sanitize_and_check_prescriptions(
+            triage_dict.get("summary_en", "")
+        )
 
-        _, blocked_drugs = guardrail_service.sanitize_and_check_prescriptions(raw_summary)
+        triage_dict["summary_ha"] = clean_sum_ha
+        triage_dict["summary_en"] = clean_sum_en
 
-        cleaned_actions_ha = [
-            guardrail_service.sanitize_and_check_prescriptions(act)[0]
-            for act in triage_dict.get("primary_actions_ha", [])
-        ]
-        cleaned_actions_en = [
-            guardrail_service.sanitize_and_check_prescriptions(act)[0]
-            for act in triage_dict.get("primary_actions_en", [])
-        ]
+        all_blocked = set(blocked_ha + blocked_en)
+
+        cleaned_actions_ha = []
+        for act in triage_dict.get("primary_actions_ha", []):
+            cleaned_act, blocked = guardrail_service.sanitize_and_check_prescriptions(act)
+            cleaned_actions_ha.append(cleaned_act)
+            all_blocked.update(blocked)
+
+        cleaned_actions_en = []
+        for act in triage_dict.get("primary_actions_en", []):
+            cleaned_act, blocked = guardrail_service.sanitize_and_check_prescriptions(act)
+            cleaned_actions_en.append(cleaned_act)
+            all_blocked.update(blocked)
 
         triage_dict["primary_actions_ha"] = cleaned_actions_ha
         triage_dict["primary_actions_en"] = cleaned_actions_en
-        triage_dict["blocked_prescriptions_found"] = blocked_drugs
+        triage_dict["blocked_prescriptions_found"] = sorted(list(all_blocked))
 
         return TriageResponse(**triage_dict)
 

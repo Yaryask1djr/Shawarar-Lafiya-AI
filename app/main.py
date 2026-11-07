@@ -5,6 +5,7 @@ Primary Health & Symptom Triage Voicebot Backend.
 
 import os
 import shutil
+import uuid
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, FileResponse
@@ -40,7 +41,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -61,6 +62,13 @@ def serve_ui():
     if os.path.exists(index_file):
         return FileResponse(index_file)
     return {"message": "UI under development"}
+
+@app.get("/favicon.ico", include_in_schema=False)
+def serve_favicon():
+    favicon_file = os.path.join(os.path.dirname(__file__), "static", "favicon.ico")
+    if os.path.exists(favicon_file):
+        return FileResponse(favicon_file, media_type="image/x-icon")
+    return Response(status_code=404)
 
 @app.get("/")
 def read_root():
@@ -121,7 +129,10 @@ async def triage_audio_endpoint(
     Handles audio note upload (IVR/WhatsApp voice memo), transcribes using ASR,
     and executes clinical symptom triage.
     """
-    temp_path = os.path.join(settings.AUDIO_UPLOAD_DIR, audio_file.filename or "temp_audio.wav")
+    # Secure unique temporary file path preventing directory traversal
+    safe_filename = os.path.basename(audio_file.filename or "temp_audio.wav")
+    temp_filename = f"{uuid.uuid4().hex}_{safe_filename}"
+    temp_path = os.path.join(settings.AUDIO_UPLOAD_DIR, temp_filename)
     try:
         with open(temp_path, "wb") as buffer:
             shutil.copyfileobj(audio_file.file, buffer)
@@ -130,6 +141,12 @@ async def triage_audio_endpoint(
             file_path=temp_path,
             hint_language=language
         )
+
+        if not transcription or len(transcription.strip()) < 2:
+            raise HTTPException(
+                status_code=400,
+                detail="Audio transcription was empty or too brief to evaluate. Please record a clearer voice message."
+            )
 
         request = SymptomTriageRequest(
             symptoms_text=transcription,
@@ -147,6 +164,8 @@ async def triage_audio_endpoint(
             audio_duration_seconds=duration,
             triage_result=triage_result
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Audio processing failed: {str(e)}")
     finally:
@@ -193,7 +212,13 @@ async def interpret_mrdt_endpoint(
     Provides bilingual clinical reading, band identification, and safety directives.
     """
     try:
+        MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB limit
         image_bytes = await image_file.read()
+        if not image_bytes or len(image_bytes) == 0:
+            raise HTTPException(status_code=400, detail="Uploaded image file is empty.")
+        if len(image_bytes) > MAX_IMAGE_SIZE_BYTES:
+            raise HTTPException(status_code=413, detail="Image file exceeds maximum permitted size of 10MB.")
+
         mime_type = image_file.content_type or "image/jpeg"
         result = await mrdt_service.interpret_image(
             image_bytes=image_bytes,
@@ -201,6 +226,8 @@ async def interpret_mrdt_endpoint(
             language=language
         )
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"mRDT interpretation failed: {str(e)}")
 

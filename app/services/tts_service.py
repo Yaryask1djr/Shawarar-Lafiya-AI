@@ -3,6 +3,7 @@ Text-to-Speech (TTS) Service for Hausa voice playback.
 Outputs structured audio descriptors and URL hooks for client playback.
 """
 
+import hashlib
 from typing import Dict, Any
 
 class TTSService:
@@ -18,12 +19,13 @@ class TTSService:
         Returns metadata and simulated audio stream reference.
         """
         voice = self.supported_voices.get(language, self.supported_voices["ha"])
+        text_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()[:8]
         return {
             "status": "ready",
             "voice_id": voice,
             "language": language,
             "character_count": len(text),
-            "audio_url": f"/api/v1/voice/stream?text_hash={abs(hash(text))[:8]}&lang={language}",
+            "audio_url": f"/api/v1/voice/stream?text_hash={text_hash}&lang={language}",
             "text_preview": text[:100] + ("..." if len(text) > 100 else "")
         }
 

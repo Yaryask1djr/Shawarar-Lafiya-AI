@@ -29,6 +29,10 @@ class Settings(BaseModel):
     DEFAULT_LANGUAGE: str = "ha"  # Hausa ISO code
     SUPPORTED_LANGUAGES: list[str] = ["ha", "en"]
 
+    # ── Referral & DHIS2 ──────────────────────────────────────────────────────
+    DHIS2_USERNAME: str = os.getenv("DHIS2_USERNAME", "")
+    DHIS2_PASSWORD: str = os.getenv("DHIS2_PASSWORD", "")
+
     # ── Clinical Safety ───────────────────────────────────────────────────────
     MAX_SYMPTOM_DESCRIPTION_CHARS: int = 1500
     ENABLE_STRICT_PRESCRIPTION_FILTER: bool = True

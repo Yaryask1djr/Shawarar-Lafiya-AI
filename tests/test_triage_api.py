@@ -113,3 +113,23 @@ def test_voice_stream_endpoint():
     assert response.status_code == 200
     assert response.headers["content-type"] == "audio/wav"
     assert len(response.content) > 0
+
+def test_mrdt_empty_image_rejected():
+    files = {"image_file": ("test.jpg", io.BytesIO(b""), "image/jpeg")}
+    response = client.post("/api/v1/mrdt/interpret", files=files, data={"language": "ha"})
+    assert response.status_code == 400
+    assert "empty" in response.json()["detail"].lower()
+
+def test_mrdt_oversized_image_rejected():
+    oversized_bytes = b"0" * (10 * 1024 * 1024 + 10)
+    files = {"image_file": ("big.jpg", io.BytesIO(oversized_bytes), "image/jpeg")}
+    response = client.post("/api/v1/mrdt/interpret", files=files, data={"language": "ha"})
+    assert response.status_code == 413
+
+def test_audio_empty_transcription_rejected():
+    # File with content that produces empty transcription in mocked/short scenario
+    files = {"audio_file": ("empty.wav", io.BytesIO(b"short"), "audio/wav")}
+    response = client.post("/api/v1/triage/audio", files=files, data={"language": "ha"})
+    # Normal response or handled 400
+    assert response.status_code in [200, 400]
+

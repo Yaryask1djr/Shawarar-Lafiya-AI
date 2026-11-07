@@ -150,8 +150,10 @@ Instructions:
         missing = self.REQUIRED_KEYS - set(data.keys())
         if missing:
             raise ValueError(f"Gemini response missing required keys: {missing}")
-        if data.get("tier") not in self.VALID_TIERS:
+        tier_val = str(data.get("tier", "")).strip().upper()
+        if tier_val not in self.VALID_TIERS:
             raise ValueError(f"Invalid tier value: {data.get('tier')}")
+        data["tier"] = tier_val
         for field in ("primary_actions_ha", "primary_actions_en"):
             if not isinstance(data.get(field), list) or len(data[field]) == 0:
                 raise ValueError(f"Field '{field}' must be a non-empty list")
